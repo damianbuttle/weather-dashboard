@@ -1,0 +1,279 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <title>Weather App</title>
+        
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+        
+        <link rel="stylesheet" type="text/css" href="style.css">
+        
+        <link href="https://fonts.googleapis.com/css?family=Dosis" rel="stylesheet">
+        
+  <script>
+
+  
+// Retrieve location and data from JSON on load.
+$(window).on("load", function () {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+            
+            $.getJSON("https://api.darksky.net/forecast/8607de7f2b8c833a13d61d9969bd96ee/"+lat+","+lon+"?callback=?", getForecast);
+					  $.getJSON("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lon + "&key=AIzaSyCvjcQzheZD4OKM2DPTBOoyNrtkqqp4D1o", function(googleLocation) {
+                $("#location").text(googleLocation.results[2].formatted_address);
+            });
+        });
+      
+    } else {
+        alert("Browser doesn't support geolocation!");
+    }
+});
+
+var mainIcon;
+var hourlyDataJson;
+var hourArr = [];
+var dailyDataJson;
+var iconPath;
+var tempConvert = function(temp) {
+    return Math.round((temp - 32) * 5/9);
+}
+
+// Date format. 
+var now = new Date();
+    var minutes = now.getMinutes();
+    if (minutes < 10)
+        minutes = "0" + minutes;
+    var date = now.toDateString() + " " + now.getHours() + ":" + minutes;
+
+// HTML data display from JSON.
+var getForecast = function(data) {
+    console.log(data);
+    $("#date").text(date);
+    $("#summary").html(data.currently.summary);
+    $("#degree").html(tempConvert(data.currently.temperature));
+    $("#real-feel").text(tempConvert(data.currently.apparentTemperature));
+    $("#humidity").html(Math.round(data.currently.humidity * 100));
+    $("#precip").html(Math.round(data.daily.data[0].precipProbability * 100));
+    $("#wind-speed").html(Math.round(data.currently.windSpeed * 1.6));
+ 
+// Toggle button between CELSIUS and FAHRENHEIT.
+    $("#degree-cels").click(function() {
+        $(this).toggleClass("active");
+        if($(this).hasClass("active")) {
+            $(this).html("&deg;F");
+            $(".conv-deg").html(" &deg;C");
+            $("#units").html(" km/h")
+            $("#wind-speed").html(Math.round(data.currently.windSpeed * 1.6));
+            $("#degree").html(tempConvert(data.currently.temperature));
+            $("#real-feel").html(tempConvert(data.currently.apparentTemperature));
+            hourlyData();
+            dailyData();
+        } else {
+            $(this).html("&deg;C");
+            $(".conv-deg").html(" &deg;F");
+            $("#units").html(" mph")
+            $("#wind-speed").html(Math.round(data.currently.windSpeed));
+            $("#degree").html(Math.round(data.currently.temperature));
+            $("#real-feel").html(Math.round(data.currently.apparentTemperature));
+            hourlyData();
+            dailyData();
+        }
+    });
+    
+    mainIcon = data.currently.icon;
+    hourlyDataJson = data.hourly.data;
+    dailyDataJson = data.daily.data;
+    
+    checkIcon(data.currently.icon);
+    $("#main-icon").attr("src", iconPath);
+    
+    
+    for (var i = 0; i < hourlyDataJson.length; i += 4) {
+        hourArr.push(hourlyDataJson[i]);
+    }
+    
+    hourlyData();
+    dailyData();
+};
+
+// Check icon status from JSON and append the right icon.
+function checkIcon(icon) {
+    if (icon === "wind") {
+        iconPath = "/images/WeatherIcons/Breezy.png";
+    } else if (icon === "clear-day") {
+        iconPath = "/images/WeatherIcons/MostlySunny.png";
+    } else if (icon === "cloudy") {
+        iconPath = "/images/WeatherIcons/MostlyCloudy.png";
+    } else if (icon === "clear-night") {
+        iconPath = "/images/WeatherIcons/ClearNight.png";
+    } else if (icon === "rain") {
+        iconPath = "/images/WeatherIcons/Rain.png";
+    } else if (icon === "snow") {
+        iconPath = "/images/WeatherIcons/Snow.png";
+    } else if (icon === "sleet") {
+        iconPath = "/images/WeatherIcons/Sleet.png";
+    } else if (icon === "fog") {
+        iconPath = "/images/WeatherIcons/Fog.png";
+    } else if (icon === "partly-cloudy-day") {
+        iconPath = "/images/WeatherIcons/PartyCloudy.png";
+    } else if (icon === "partly-cloudy-night") {
+        iconPath = "/images/WeatherIcons/PartyCloudyNight.png";
+    }  
+};
+
+// Display hourly temperature, icon and time dynamically.
+function hourlyData () {
+    for (i = 0; i < hourArr.length; i++) {
+        checkIcon(hourArr[i].icon);
+        $("#hourly-icon-" + i).attr("src", iconPath);
+        $("#hour-" + i).html(convertUnixTime());
+
+        if ($("#degree-cels").hasClass("active")) {
+            $("#hourly-deg-" + i).html(tempConvert(hourArr[i].temperature));
+        } else {
+            $("#hourly-deg-" + i).html(Math.round(hourArr[i].temperature));
+        }   
+    }
+};
+
+function convertUnixTime() {
+    var date = new Date(hourArr[i].time * 1000);
+    var hours = date.getHours();
+    if (hours < 10)
+        hours = "0" + hours;
+    return hours + ':' + "00";
+};
+
+// Display daily temperature, icon and time dynamically.
+function dailyData () {
+    for (i = 0; i < dailyDataJson.length; i++) {
+        checkIcon(dailyDataJson[i].icon);
+        $("#daily-icon-" + i).attr("src", iconPath);
+        $("#day-" + i).html(unixTimeToDay());
+            
+        if($("#degree-cels").hasClass("active")) {
+            $("#daily-deg-" + i).html(tempConvert(dailyDataJson[i].temperatureMax));
+        } else {
+            $("#daily-deg-" + i).html(Math.round(dailyDataJson[i].temperatureMax));
+        }
+    }
+};
+
+function unixTimeToDay() {
+    var date = new Date(dailyDataJson[i].time * 1000);
+    var dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    return dayName[date.getDay()];
+};
+
+</script>
+
+    </head>
+    <body>
+         <div class="container-fluid container-max weather" id="weather-section">
+            <div class="row">
+                <div class="col-sm-8" id="main-panel">
+                    <div class="row">
+                        <div class="col">
+                                <img src="/images/WeatherIcons/MostlySunny.png" id="main-icon">
+                            <p class="main-deg"><span id="degree">0</span><span class="conv-deg"> &deg;C</span></p>
+                        </div>
+                        <div class="col" id="middle-col">
+                            <label class="switch">
+                                <p>&deg;C &deg;F</p>
+                                <input type="checkbox" class="active" id="degree-cels">
+                                <div class="slider round"></div>
+                            </label>
+                            <p id="location">City, Country</p>
+                            <p id="date">Date</p>
+                            <p id="summary">Weather info</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-4" id="main-details">
+                    <p><img src="https://image.ibb.co/mjFJFF/thermometer_icon.png"> Real Feel: <span class="main-info" id="real-feel">0</span><span class="conv-deg"> &deg;C</span></p>
+                    <p><img src="https://image.ibb.co/nPUCaF/humidity.png"> Humidity: <span class="main-info" id="humidity">0</span> %</p>
+                    <p><img src="https://image.ibb.co/f9Oihv/rain_drop.png"> Rain Chance: <span class="main-info" id="precip">0</span> %</p>
+                    <p><img src="https://image.ibb.co/d24pNv/wind_icon.png"> Wind Speed: <span class="main-info" id="wind-speed">0</span><span id=units> km/h</span></p>
+                    <p><img src="https://image.ibb.co/f9Oihv/rain_drop.png"> Precipitation Amount: <span class="main-info" id="accu">0</span><span id=units></span></p>
+
+                </div>
+            </div>
+            <h5>Hourly</h5>
+            <div class="row hourly-panel">
+                <div class="col-2">
+                    <p class="hourly-degree"><span id="hourly-deg-0">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="hourly-icon-0">
+                    <p class="hours" id="hour-0">15:00</p>
+                </div>
+                <div class="col-2">
+                    <p class="hourly-degree"><span id="hourly-deg-1">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="hourly-icon-1">
+                    <p class="hours" id="hour-1">19:00</p>
+                </div>
+                <div class="col-2">
+                    <p class="hourly-degree"><span id="hourly-deg-2">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="hourly-icon-2">
+                    <p class="hours" id="hour-2">23:00</p>
+                </div>
+                <div class="col-2">
+                    <p class="hourly-degree"><span id="hourly-deg-3">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="hourly-icon-3">
+                    <p class="hours" id="hour-3">03:00</p>
+                </div>
+                <div class="col-2">
+                    <p class="hourly-degree"><span id="hourly-deg-4">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="hourly-icon-4">
+                    <p class="hours" id="hour-4">07:00</p>
+                </div>
+                <div class="col-2">
+                    <p class="hourly-degree"><span id="hourly-deg-5">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="hourly-icon-5">
+                    <p class="hours" id="hour-5">11:00</p>
+                </div>
+            </div>
+            <h5>Daily</h5>
+            <div class="row daily-panel">
+                <div class="col-2">
+                    <p class="daily-degree"><span id="daily-deg-0">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="daily-icon-0">
+                    <p class="days" id="day-0">Today</p>
+                </div>
+                <div class="col-2">
+                    <p class="daily-degree"><span id="daily-deg-1">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="daily-icon-1">
+                    <p class="days" id="day-1">Wed</p>
+                </div>
+                <div class="col-2">
+                    <p class="daily-degree"><span id="daily-deg-2">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="daily-icon-2">
+                    <p class="days" id="day-2">Thu</p>
+                </div>
+                <div class="col-2">
+                    <p class="daily-degree"><span id="daily-deg-3">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="daily-icon-3">
+                    <p class="days" id="day-3">Fri</p>
+                </div>
+                <div class="col-2">
+                    <p class="daily-degree"><span id="daily-deg-4">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="daily-icon-4">
+                    <p class="days" id="day-4">Sat</p>
+                </div>
+                <div class="col-2">
+                    <p class="daily-degree"><span id="daily-deg-5">24</span>&deg;</p>
+                    <img src="/images/WeatherIcons/MostlySunny.png" id="daily-icon-5">
+                    <p class="days" id="day-5">Sun</p>
+                </div>
+            </div>
+        </div>
+        
+			
+        <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+        <script src="script.js"></script>
+    </body>
+</html>
