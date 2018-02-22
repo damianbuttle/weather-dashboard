@@ -2,6 +2,7 @@
 .container-fluid {
     color: white;
     background: cadetblue;
+    height: 100%;
     }
     
     .weather h2 {
